@@ -1,0 +1,104 @@
+// Define pins
+const int sensorPins[] = {2, 3, 4, 7}; // Sensor signal pins
+const int speakerPins[] = {5, 6, 8, 9}; // Speaker pins
+
+// Define pins for the LEDs
+const int ledPinGreen = 10;
+const int ledPinRed = 11;
+
+void setup() {
+  // Initialize sensor signal pins as OUTPUTs using for loop
+  for(int i = 0; i < 4; i++) {
+    pinMode(sensorPins[i], OUTPUT);
+  }
+  // Initialize speaker pins as OUTPUTs using for loop
+  for(int i = 0; i < 4; i++) {
+    pinMode(speakerPins[i], OUTPUT);
+  }
+  // Initialize LED pins as OUTPUTs
+  pinMode(ledPinGreen, OUTPUT);
+  pinMode(ledPinRed, OUTPUT);
+  
+  Serial.begin(9600);
+}
+
+void loop() {
+  // Array for distances measured
+  long distances[4];
+
+  for(int i = 0; i < 4; i++) {
+    distances[i] = measureDistance(sensorPins[i]);
+    // Control speaker for corresponding sensor
+    if(distances[i] < 20) {
+      // If object is 20cm away, intensify beeps
+      tone(speakerPins[i], 1000);
+    } else if(distances[i] < 100) {
+      // If object is 21-100cm, output calm beeps
+      tone(speakerPins[i], 1000, 200);
+    } else {
+      // If object is further, no need for beep.
+      noTone(speakerPins[i]);
+    }
+  }
+
+  // Find the minimum distance
+  long minDistance = distances[0];
+  for(int i = 1; i < 4; i++) {
+    if(distances[i] < minDistance) {
+      minDistance = distances[i];
+    }
+  }
+  
+  // The Red LED triggers for <20cm and Green LED for <100cm
+  if(minDistance < 20) {
+    digitalWrite(ledPinRed, HIGH);
+    digitalWrite(ledPinGreen, LOW);
+  } else if(minDistance < 100) {
+    digitalWrite(ledPinRed, LOW);
+    digitalWrite(ledPinGreen, HIGH);
+  } else {
+    digitalWrite(ledPinRed, LOW);
+    digitalWrite(ledPinGreen, LOW);
+  }
+  
+  // Send distances data to the serial port
+  for(int i = 0; i < 4; i++) {
+    Serial.print(distances[i]);
+    if(i < 3) {
+      // Separate the distances with commas
+      Serial.print(",");
+    }
+  }
+  // End the line for Python reader
+  Serial.println();
+
+  // Delay between measurements
+  delay(50);
+}
+
+// Function to measure distance using an ultrasonic sensor
+long measureDistance(int pin) {
+  // Set the trigger pin to LOW
+  digitalWrite(pin, LOW);
+  // Wait for 2 microseconds
+  delayMicroseconds(2);
+  
+  // Setting the pin HIGH for 10 microseconds
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(pin, LOW);
+  
+  // Switches the pin to INPUT mode to listen for the echo
+  pinMode(pin, INPUT);
+  
+  // Measure the time it takes for the echo to return
+  long duration = pulseIn(pin, HIGH);
+  
+  // Switches the pin back to OUTPUT mode
+  pinMode(pin, OUTPUT);
+  // Calculate distance in cm using formula
+  long distance = duration * 0.0343 / 2;
+  
+  // Return the calculated distance
+  return distance;
+}
